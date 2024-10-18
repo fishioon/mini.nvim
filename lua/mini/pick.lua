@@ -1444,16 +1444,22 @@ end
 ---     the output. Default: `false`.
 ---@param opts __pick_builtin_opts
 MiniPick.builtin.buffers = function(local_opts, opts)
-  local_opts = vim.tbl_deep_extend('force', { include_current = true, include_unlisted = false }, local_opts or {})
+  local_opts = vim.tbl_deep_extend('force', { scope = 'all', include_current = true, include_unlisted = false }, local_opts or {})
 
   local buffers_output = vim.api.nvim_exec('buffers' .. (local_opts.include_unlisted and '!' or ''), true)
   local cur_buf_id, include_current = vim.api.nvim_get_current_buf(), local_opts.include_current
   local items = {}
+  local is_scope_all = local_opts.scope == 'all'
+  local match_scope = function (name)
+    return is_scope_all or not (vim.startswith(name, '/') or vim.startswith(name, '~/'))
+  end
   for _, l in ipairs(vim.split(buffers_output, '\n')) do
     local buf_str, name = l:match('^%s*%d+'), l:match('"(.*)"')
-    local buf_id = tonumber(buf_str)
-    local item = { text = name, bufnr = buf_id }
-    if buf_id ~= cur_buf_id or include_current then table.insert(items, item) end
+    if match_scope(name) then
+      local buf_id = tonumber(buf_str)
+      local item = { text = name, bufnr = buf_id }
+      if buf_id ~= cur_buf_id or include_current then table.insert(items, item) end
+    end
   end
 
   local show = H.get_config().source.show or H.show_with_icons
